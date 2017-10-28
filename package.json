@@ -4,7 +4,8 @@
   "description": "fits (Flexible Image Transport System) reader module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "example": "webpack --config ./example/webpack.config.js --context example",
+    "gh-pages": "npm run example && gh-pages -d example/dist"
   },
   "keywords": [
     "fits",

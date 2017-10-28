@@ -1,7 +1,10 @@
+# Introduction
+* [Working demo](https://michitaro.github.io/fits/)
+
 # Requisites
 * https://github.com/michitaro/assets-installer-plugin
 
-# Example (Source code of the working DEMO)
+# Example (Source code of the working demo)
 ```typescript
 import { Fits, DataType } from "@hscmap/fits"
 const sampleFitsURL = require<string>('file-loader!./sample.fits')
