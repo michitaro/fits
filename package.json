@@ -1,8 +1,9 @@
 {
-  "name": "fits",
+  "name": "@hscmap/fits",
   "version": "1.0.0",
   "description": "fits (Flexible Image Transport System) reader module",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/types/index.d.ts",
   "scripts": {
     "example": "webpack --config ./example/webpack.config.js --context example",
     "gh-pages": "npm run example && gh-pages -d example/dist"
@@ -24,5 +25,6 @@
     "webpack": "^3.8.1",
     "webpack-dev-server": "^2.9.3",
     "worker-loader": "^1.1.0"
-  }
+  },
+  "repository": "github:michitaro/fits"
 }
