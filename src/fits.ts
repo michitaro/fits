@@ -1,9 +1,11 @@
 import { Hdu } from "./hdu"
 import { Decoder } from "./decoder"
-import { HduDecodeOption } from "./common"
+import { HduDecodeOption, DataType } from "./common"
 
 
 export class Fits extends Array<Hdu> {
+    static DataType = DataType
+
     constructor() {
         super()
     }
