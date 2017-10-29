@@ -27,7 +27,6 @@ self.addEventListener('message', e => {
 
 
 function decode(request: WorkerRequestMessage): HduSource[] {
-    debugger
     const raw = isGzipped(request.fileContent) ? gzipInflate(request.fileContent) : request.fileContent
     
     const { headers, dataBuffers } = strideArrayBuffer(raw)
