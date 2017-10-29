@@ -1,4 +1,4 @@
-import { WorkerRequestMessage, WorkerResponseMessage, HduSource, Header, DataType, card } from "./common"
+import { WorkerRequestMessage, WorkerResponseMessage, HduSource, Header, DataType, card, HduDecodeOption } from "./common"
 
 
 self.addEventListener('message', e => {
@@ -28,15 +28,82 @@ const BLOCK_SIZE = CARD_LENGTH * CARDS_PER_BLOCK
 
 
 function decode(request: WorkerRequestMessage): HduSource[] {
+    const { headers, dataBuffers } = strideArrayBuffer(request.fileContent)
+
+    if (!request.hduDecodeOptions)
+        request.hduDecodeOptions = headers.map((h, i) => ({ sourceIndex: i }))
+
+    for (let j = 0; j < request.hduDecodeOptions.length; ++j) {
+        const o = request.hduDecodeOptions[j]
+        const i = o.sourceIndex == undefined ? (o.sourceIndex = j) : o.sourceIndex
+        const h = headers[i]
+        o.outputDataType == undefined && (o.outputDataType = DataType.float32)
+    }
+
+    return request.hduDecodeOptions.map((o: HduDecodeOption) => {
+        const header = headers[o.sourceIndex]
+        const buffer = dataBuffers[o.sourceIndex]
+        const ab = buildTypedArray(header, buffer, o)
+        return { header, data: ab, dataType: o.outputDataType }
+    })
+}
+
+
+function buildTypedArray(header: Header, dv: DataView, o: HduDecodeOption) {
+    const { nPixels } = calcDataSize(header)
+    const bitpix = card(header, 'BITPIX', 'number')
+
+    let picker: (i: number) => number
+    switch (bitpix) {
+        case 8:
+            picker = i => dv.getUint8(i)
+            break
+        case 16:
+            picker = i => dv.getUint16(i << 1)
+            break
+        case 32:
+            picker = i => dv.getUint32(i << 2)
+            break
+        case -32:
+            picker = i => dv.getFloat32(i << 2)
+            break
+        case -64:
+            picker = i => dv.getFloat64(i << 4)
+            break
+    }
+
+    let value = (i: number) => picker(i)
+    if ([DataType.float32, DataType.float64].indexOf(o.outputDataType) >= 0) {
+        const bzero = card(header, 'BZERO', 'number', 0)
+        const bscale = card(header, 'BSCALE', 'number', 1)
+        value = i => bscale * picker(i) + bzero
+    }
+
+    const outArrayFactory = {
+        [DataType.uint8]: Uint8Array,
+        [DataType.uint16]: Uint16Array,
+        [DataType.uint32]: Uint32Array,
+        [DataType.float32]: Float32Array,
+        [DataType.float64]: Float64Array,
+    }[o.outputDataType]
+
+    const array = new outArrayFactory(nPixels)
+
+    for (let i = 0; i < nPixels; ++i)
+        array[i] = value(i)
+
+    return array.buffer
+}
+
+
+function strideArrayBuffer(ab: ArrayBuffer) {
     let offset = 0
     const headers: Header[] = []
     const dataBuffers: DataView[] = []
-
-    // parse only headers and stride all HDUs
-    for (let hduIndex = 0; offset < request.fileContent.byteLength; ++hduIndex) {
+    for (let hduIndex = 0; offset < ab.byteLength; ++hduIndex) {
         let header: Header = {}
         while (true) {
-            const blockBytes = new Uint8Array(request.fileContent, offset, offset + BLOCK_SIZE)
+            const blockBytes = new Uint8Array(ab, offset, offset + BLOCK_SIZE)
             offset += BLOCK_SIZE
             const { end, header: newHeader } = parseHeaderBlock(blockBytes)
             header = { ...header, ...newHeader }
@@ -45,43 +112,10 @@ function decode(request: WorkerRequestMessage): HduSource[] {
         }
         const { byteLength } = calcDataSize(header)
         headers.push(header)
-        dataBuffers.push(new DataView(request.fileContent, offset, byteLength))
+        dataBuffers.push(new DataView(ab, offset, byteLength))
         offset += align(byteLength, BLOCK_SIZE)
     }
-
-    // fill hduDecodeOptions
-    if (request.hduDecodeOptions == undefined)
-        request.hduDecodeOptions = headers.map((h, index) => ({
-            sourceIndex: index,
-            outputDataType: bitpix2dataType(card(h, 'BITPIX', 'number')),
-        }))
-
-    return request.hduDecodeOptions.map((o => {
-        const header = headers[o.sourceIndex]
-        const buffer = dataBuffers[o.sourceIndex]
-        const { nPixels } = calcDataSize(header)
-        const dataType = o.outputDataType
-        const outTypedArray = new ({
-            [DataType.float32]: Float32Array,
-            [DataType.uint8]: Uint8Array,
-        }[dataType])(nPixels)
-
-        if (!o.doNotScaleImageData && card(header, 'BITPIX', 'number') > 0)
-            console.warn(`B{SCALE,ZERO} not supported`)
-
-        const picker = ({
-            [-32]: (i: number) => buffer.getFloat32(4 * i),
-            [8]: (i: number) => buffer.getUint8(i),
-        } as { [bitpix: number]: (i: number) => number })[card(header, 'BITPIX', 'number')]
-
-        for (let i = 0; i < nPixels; ++i) {
-            outTypedArray[i] = picker(i)
-        }
-
-        const data = outTypedArray.buffer
-
-        return { header, data, dataType }
-    }))
+    return { headers, dataBuffers }
 }
 
 
@@ -89,8 +123,14 @@ function bitpix2dataType(bitpix: number) {
     switch (bitpix) {
         case 8:
             return DataType.uint8
+        case 16:
+            return DataType.uint16
+        case 32:
+            return DataType.uint32
         case -32:
             return DataType.float32
+        case -64:
+            return DataType.float64
         default:
             throw new Error(`unknwon BITPIX: ${bitpix}`)
     }

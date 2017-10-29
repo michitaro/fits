@@ -1,20 +1,23 @@
 export enum DataType {
     uint8,
+    uint16,
+    uint32,
     float32,
+    float64,
 }
 
 
 export type HduDecodeOption = {
     sourceIndex: number
     outputDataType: DataType
-    doNotScaleImageData?: boolean
+    // doNotScaleImageData: boolean
 }
 
 
 export type WorkerRequestMessage = {
     requestId: number
     fileContent: ArrayBuffer
-    hduDecodeOptions?: HduDecodeOption[]
+    hduDecodeOptions?: Partial<HduDecodeOption>[]
 }
 
 
@@ -42,8 +45,10 @@ export type CardTypes = {
 }
 
 
-export function card<T extends keyof CardTypes>(header: Header, key: string, type: T): CardTypes[T] {
-    const value = header[key]
+export function card<T extends keyof CardTypes>(header: Header, key: string, type: T, defaultValue?: any): CardTypes[T] {
+    let value = header[key]
+    if (value == undefined)
+        value = defaultValue
     if (typeof value != type)
         throw new Error(`Type mismatch: ${value} for ${key}`)
     return value

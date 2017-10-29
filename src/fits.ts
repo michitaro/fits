@@ -10,12 +10,12 @@ export class Fits extends Array<Hdu> {
 
     private static decoder?: Decoder
 
-    static async decode(arraybuffer: ArrayBuffer, hduDecodeOptions?: HduDecodeOption[]) {
+    static async decode(arraybuffer: ArrayBuffer, hduDecodeOptions?: Partial<HduDecodeOption>[]) {
         this.decoder || (this.decoder = new Decoder())
         return await this.decoder.decode(arraybuffer, hduDecodeOptions)
     }
 
-    static async fetch(url: string, hduDecodeOptions?: HduDecodeOption[]) {
+    static async fetch(url: string, hduDecodeOptions?: Partial<HduDecodeOption>[]) {
         return await this.decode(await ajax(url), hduDecodeOptions)
     }
 }

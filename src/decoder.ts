@@ -15,7 +15,7 @@ export class Decoder {
     private requestId = 0
     private callbacks = new Map<number, Callback>()
 
-    decode(fileContent: ArrayBuffer, hduDecodeOptions?: HduDecodeOption[]) {
+    decode(fileContent: ArrayBuffer, hduDecodeOptions?: Partial<HduDecodeOption>[]) {
         return new Promise<Hdu[]>((resolve, reject) => {
             const worker = this.setupWorker()
             const requestId = ++this.requestId

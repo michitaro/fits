@@ -3,7 +3,7 @@ const sampleFitsURL = require<string>('file-loader!./sample.fits')
 
 
 window.addEventListener('load', async e => {
-    const fits = await Fits.fetch(sampleFitsURL, [{ sourceIndex: 0, outputDataType: DataType.uint8, doNotScaleImageData: true }])
+    const fits = await Fits.fetch(sampleFitsURL, [{ outputDataType: DataType.uint8 }])
     const hdu = fits[0]
 
     const width = hdu.card('NAXIS1', 'number')
