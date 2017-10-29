@@ -1,4 +1,8 @@
 import { WorkerRequestMessage, WorkerResponseMessage, HduSource, Header, DataType, card, HduDecodeOption } from "./common"
+interface gzip {
+    unzip(compressed: Uint8Array): number[]
+}
+const gzip = require<gzip>('gzip-js')
 
 
 self.addEventListener('message', e => {
@@ -22,24 +26,22 @@ self.addEventListener('message', e => {
 })
 
 
-const CARD_LENGTH = 80
-const CARDS_PER_BLOCK = 36
-const BLOCK_SIZE = CARD_LENGTH * CARDS_PER_BLOCK
-
-
 function decode(request: WorkerRequestMessage): HduSource[] {
-    const { headers, dataBuffers } = strideArrayBuffer(request.fileContent)
-
+    debugger
+    const raw = isGzipped(request.fileContent) ? gzipInflate(request.fileContent) : request.fileContent
+    
+    const { headers, dataBuffers } = strideArrayBuffer(raw)
+    
     if (!request.hduDecodeOptions)
-        request.hduDecodeOptions = headers.map((h, i) => ({ sourceIndex: i }))
-
+    request.hduDecodeOptions = headers.map((h, i) => ({ sourceIndex: i }))
+    
     for (let j = 0; j < request.hduDecodeOptions.length; ++j) {
         const o = request.hduDecodeOptions[j]
         const i = o.sourceIndex == undefined ? (o.sourceIndex = j) : o.sourceIndex
         const h = headers[i]
         o.outputDataType == undefined && (o.outputDataType = DataType.float32)
     }
-
+    
     return request.hduDecodeOptions.map((o: HduDecodeOption) => {
         const header = headers[o.sourceIndex]
         const buffer = dataBuffers[o.sourceIndex]
@@ -52,14 +54,14 @@ function decode(request: WorkerRequestMessage): HduSource[] {
 function buildTypedArray(header: Header, dv: DataView, o: HduDecodeOption) {
     const { nPixels } = calcDataSize(header)
     const bitpix = card(header, 'BITPIX', 'number')
-
+    
     let picker: (i: number) => number
     switch (bitpix) {
         case 8:
-            picker = i => dv.getUint8(i)
-            break
+        picker = i => dv.getUint8(i)
+        break
         case 16:
-            picker = i => dv.getUint16(i << 1)
+        picker = i => dv.getUint16(i << 1)
             break
         case 32:
             picker = i => dv.getUint32(i << 2)
@@ -96,6 +98,11 @@ function buildTypedArray(header: Header, dv: DataView, o: HduDecodeOption) {
 }
 
 
+const CARD_LENGTH = 80
+const CARDS_PER_BLOCK = 36
+const BLOCK_SIZE = CARD_LENGTH * CARDS_PER_BLOCK
+
+
 function strideArrayBuffer(ab: ArrayBuffer) {
     let offset = 0
     const headers: Header[] = []
@@ -103,7 +110,7 @@ function strideArrayBuffer(ab: ArrayBuffer) {
     for (let hduIndex = 0; offset < ab.byteLength; ++hduIndex) {
         let header: Header = {}
         while (true) {
-            const blockBytes = new Uint8Array(ab, offset, offset + BLOCK_SIZE)
+            const blockBytes = new Uint8Array(ab, offset, BLOCK_SIZE)
             offset += BLOCK_SIZE
             const { end, header: newHeader } = parseHeaderBlock(blockBytes)
             header = { ...header, ...newHeader }
@@ -253,6 +260,18 @@ class Card {
         }
         return { value, comment }
     }
+}
+
+
+function isGzipped(ab: ArrayBuffer) {
+    const a = new Uint8Array(ab, 0, 2)
+    return a[0] == 0x1f && a[1] == 0x8b
+}
+
+
+
+function gzipInflate(ab: ArrayBuffer) {
+    return (new Uint8Array(gzip.unzip(new Uint8Array(ab)))).buffer
 }
 
 

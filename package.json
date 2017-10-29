@@ -16,7 +16,8 @@
   "author": "Koike Michitro",
   "license": "MIT",
   "dependencies": {
-    "es6-promise": "^4.1.1"
+    "es6-promise": "^4.1.1",
+    "gzip-js": "^0.3.2"
   },
   "devDependencies": {
     "file-loader": "^1.1.5",

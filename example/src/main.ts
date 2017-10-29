@@ -1,9 +1,10 @@
-import { Fits, DataType } from "../../src"
-const sampleFitsURL = require<string>('file-loader!./sample.fits')
+import { Fits } from "../../src"
+// const sampleFitsURL = require<string>('file-loader!./sample.fits')
+const sampleFitsURL = 'http://alasky.u-strasbg.fr/DSS/DSS2-blue-XJ-S/Norder3/Dir0/Npix307.fits'
 
 
 window.addEventListener('load', async e => {
-    const fits = await Fits.fetch(sampleFitsURL, [{ outputDataType: DataType.uint8 }])
+    const fits = await Fits.fetch(sampleFitsURL, [{ outputDataType: Fits.DataType.uint16 }])
     const hdu = fits[0]
 
     const width = hdu.card('NAXIS1', 'number')
@@ -15,14 +16,15 @@ window.addEventListener('load', async e => {
     canvas.height = height
 
     const imagedata = ctx.createImageData(width, height)
-    hdu.uint8array(array => {
+    hdu.uint16array(array => {
         for (let y = 0; y < height; ++y) {
             for (let x = 0; x < width; ++x) {
                 const i = y * width + x
                 const j = (height - y) * width + x
-                imagedata.data[4 * j] = array[i]
-                imagedata.data[4 * j + 1] = array[i]
-                imagedata.data[4 * j + 2] = array[i]
+                const value = 255 * Math.sqrt((array[i] / 65535))
+                imagedata.data[4 * j] = value
+                imagedata.data[4 * j + 1] = value
+                imagedata.data[4 * j + 2] = value
                 imagedata.data[4 * j + 3] = 255
             }
         }
