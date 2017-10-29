@@ -5,6 +5,7 @@
   "main": "build/dist/index.js",
   "types": "build/dist/types/index.d.ts",
   "scripts": {
+    "prepublish": "webpack --config ./build/webpack.config.js --context build",
     "example": "webpack --config ./example/webpack.config.js --context example",
     "gh-pages": "npm run example && gh-pages -d example/dist"
   },
