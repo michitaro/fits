@@ -6,14 +6,23 @@
 
 # Example (Source code of the working demo)
 ```typescript
-import { Fits, DataType } from "@hscmap/fits"
+import { Fits, Hdu } from "@hscmap/fits"
 const sampleFitsURL = require<string>('file-loader!./sample.fits')
 
 
 window.addEventListener('load', async e => {
-    const fits = await Fits.fetch(sampleFitsURL, [{ sourceIndex: 0, outputDataType: DataType.uint8, doNotScaleImageData: true }])
-    const hdu = fits[0]
+    const fits = await Fits.fetch(sampleFitsURL, [
+        { outputDataType: Fits.DataType.uint8 },
+        { outputDataType: Fits.DataType.uint8 },
+    ])
 
+    for (const hdu of fits) {
+        showHdu(hdu)
+    }
+})
+
+
+function showHdu(hdu: Hdu) {
     const width = hdu.card('NAXIS1', 'number')
     const height = hdu.card('NAXIS2', 'number')
 
@@ -28,9 +37,10 @@ window.addEventListener('load', async e => {
             for (let x = 0; x < width; ++x) {
                 const i = y * width + x
                 const j = (height - y) * width + x
-                imagedata.data[4 * j] = array[i]
-                imagedata.data[4 * j + 1] = array[i]
-                imagedata.data[4 * j + 2] = array[i]
+                const value = array[i]
+                imagedata.data[4 * j] = value
+                imagedata.data[4 * j + 1] = value
+                imagedata.data[4 * j + 2] = value
                 imagedata.data[4 * j + 3] = 255
             }
         }
@@ -41,7 +51,9 @@ window.addEventListener('load', async e => {
     const pre = document.createElement('pre')
     pre.innerText = JSON.stringify(hdu.header, undefined, 2)
     document.body.appendChild(pre)
-})
+
+    document.body.appendChild(document.createElement('hr'))
+}
 ```
 
 # See also
