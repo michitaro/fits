@@ -28,20 +28,23 @@ self.addEventListener('message', e => {
 
 function decode(request: WorkerRequestMessage): HduSource[] {
     const raw = isGzipped(request.fileContent) ? gzipInflate(request.fileContent) : request.fileContent
-    
+
     const { headers, dataBuffers } = strideArrayBuffer(raw)
-    
+
     if (!request.hduDecodeOptions)
-    request.hduDecodeOptions = headers.map((h, i) => ({ sourceIndex: i }))
-    
+        request.hduDecodeOptions = headers.map((h, i) => ({ sourceIndex: i }))
+
+    // fill omitted fields
     for (let j = 0; j < request.hduDecodeOptions.length; ++j) {
         const o = request.hduDecodeOptions[j]
         const i = o.sourceIndex == undefined ? (o.sourceIndex = j) : o.sourceIndex
         const h = headers[i]
         o.outputDataType == undefined && (o.outputDataType = DataType.float32)
     }
-    
-    return request.hduDecodeOptions.map((o: HduDecodeOption) => {
+
+    return (request.hduDecodeOptions as HduDecodeOption[]).map((o: HduDecodeOption) => {
+        if (o.sourceIndex >= headers.length)
+            throw new Error(`hdul.length(${headers.length}) >= sourceIndex(${o.sourceIndex})`)
         const header = headers[o.sourceIndex]
         const buffer = dataBuffers[o.sourceIndex]
         const ab = buildTypedArray(header, buffer, o)
@@ -53,14 +56,14 @@ function decode(request: WorkerRequestMessage): HduSource[] {
 function buildTypedArray(header: Header, dv: DataView, o: HduDecodeOption) {
     const { nPixels } = calcDataSize(header)
     const bitpix = card(header, 'BITPIX', 'number')
-    
+
     let picker: (i: number) => number
     switch (bitpix) {
         case 8:
-        picker = i => dv.getUint8(i)
-        break
+            picker = i => dv.getUint8(i)
+            break
         case 16:
-        picker = i => dv.getUint16(i << 1)
+            picker = i => dv.getUint16(i << 1)
             break
         case 32:
             picker = i => dv.getUint32(i << 2)

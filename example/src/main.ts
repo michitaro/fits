@@ -1,11 +1,20 @@
-import { Fits } from "../../src"
+import { Fits, Hdu } from "../../src"
 const sampleFitsURL = require<string>('file-loader!./sample.fits')
 
 
 window.addEventListener('load', async e => {
-    const fits = await Fits.fetch(sampleFitsURL, [{ outputDataType: Fits.DataType.uint8 }])
-    const hdu = fits[0]
+    const fits = await Fits.fetch(sampleFitsURL, [
+        { outputDataType: Fits.DataType.uint8 },
+        { outputDataType: Fits.DataType.uint8 },
+    ])
 
+    for (const hdu of fits) {
+        showHdu(hdu)
+    }
+})
+
+
+function showHdu(hdu: Hdu) {
     const width = hdu.card('NAXIS1', 'number')
     const height = hdu.card('NAXIS2', 'number')
 
@@ -34,4 +43,6 @@ window.addEventListener('load', async e => {
     const pre = document.createElement('pre')
     pre.innerText = JSON.stringify(hdu.header, undefined, 2)
     document.body.appendChild(pre)
-})
+
+    document.body.appendChild(document.createElement('hr'))
+}
