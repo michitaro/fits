@@ -1,6 +1,6 @@
 {
   "name": "@hscmap/fits",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "fits (Flexible Image Transport System) reader module",
   "main": "build/dist/index.js",
   "types": "build/dist/types/index.d.ts",
