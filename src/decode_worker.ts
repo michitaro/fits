@@ -154,7 +154,7 @@ function align(n: number, blockSize: number) {
 function calcDataSize(header: Header) {
     const naxis = card(header, 'NAXIS', 'number')
     const naxes = range(1, naxis + 1).map(i => card(header, `NAXIS${i}`, 'number'))
-    const nPixels = naxes.reduce((memo, next) => memo * next, 1)
+    const nPixels = naxis == 0 ? 0 : naxes.reduce((memo, next) => memo * next, 1)
     const byteDepth = Math.abs(card(header, 'BITPIX', 'number')) / 8
     const byteLength = nPixels * byteDepth
     return { nPixels, byteDepth, byteLength, naxis, naxes }
