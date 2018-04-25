@@ -24,19 +24,18 @@ function showHdu(hdu: Hdu) {
     canvas.height = height
 
     const imagedata = ctx.createImageData(width, height)
-    hdu.uint8array(array => {
-        for (let y = 0; y < height; ++y) {
-            for (let x = 0; x < width; ++x) {
-                const i = y * width + x
-                const j = (height - y) * width + x
-                const value = array[i]
-                imagedata.data[4 * j] = value
-                imagedata.data[4 * j + 1] = value
-                imagedata.data[4 * j + 2] = value
-                imagedata.data[4 * j + 3] = 255
-            }
+    const array = hdu.uint8array()
+    for (let y = 0; y < height; ++y) {
+        for (let x = 0; x < width; ++x) {
+            const i = y * width + x
+            const j = (height - y) * width + x
+            const value = array[i]
+            imagedata.data[4 * j] = value
+            imagedata.data[4 * j + 1] = value
+            imagedata.data[4 * j + 2] = value
+            imagedata.data[4 * j + 3] = 255
         }
-    })
+    }
     ctx.putImageData(imagedata, 0, 0)
     document.body.appendChild(canvas)
 
