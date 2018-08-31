@@ -1,3 +1,5 @@
+var nodeExternals = require('webpack-node-externals')
+
 module.exports = {
     entry: [
         'es6-promise/auto',
@@ -24,11 +26,6 @@ module.exports = {
         ],
     },
     externals: [
-        // include only relative assets
-        function (context, request, callback) {
-            if (!request.match(/(?:^|!)(?:\.|\.\.)?\//))
-                return callback(null, `commonjs ${request}`)
-            callback()
-        }
+        nodeExternals(),
     ],
 }
