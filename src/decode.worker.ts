@@ -170,6 +170,7 @@ function range(a: number, b: number) {
 
 
 function parseHeaderBlock(bytes: Uint8Array) {
+    // @ts-ignore
     const text = String.fromCharCode.apply(String, bytes) as string
     const header: Header = {}
     if (text.length != BLOCK_SIZE)
