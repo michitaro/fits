@@ -52,8 +52,6 @@ class Decoder {
 export async function decode(fileContent: ArrayBuffer, hduDecodeOptions?: Partial<HduDecodeOption>[]) {
     const decoder = Decoder.singleton = Decoder.singleton || new Decoder()
     const start = performance.now()
-    console.log('decode start')
     const hdul = await decoder.decode(fileContent, hduDecodeOptions)
-    console.log(performance.now() - start)
     return hdul
 }
