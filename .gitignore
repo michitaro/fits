@@ -1,7 +1,7 @@
 /node_modules
 /.vscode
 .DS_Store
-/build/dist
+/build
 /example/dist
 
 wabuild

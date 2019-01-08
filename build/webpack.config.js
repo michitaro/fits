@@ -22,6 +22,8 @@ module.exports = {
                         "declarationDir": `${__dirname}/types`
                     },
                 },
+            },
+            {
                 test: /\.clist$/,
                 use: [
                     {
