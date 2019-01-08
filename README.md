@@ -1,9 +1,6 @@
 # Introduction
 * [Working demo](https://michitaro.github.io/fits/)
 
-# Requisites
-* https://github.com/michitaro/assets-installer-plugin
-
 # Example (Source code of the working demo)
 ```typescript
 import { Fits, Hdu } from "@hscmap/fits"

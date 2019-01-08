@@ -1,9 +1,9 @@
 export enum DataType {
-    uint8,
-    uint16,
-    uint32,
-    float32,
-    float64,
+    uint8 = 8,
+    uint16 = 16,
+    uint32 = 32,
+    float32 = -32,
+    float64 = -64,
 }
 
 

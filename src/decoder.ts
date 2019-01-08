@@ -1,7 +1,7 @@
-import { HduDecodeOption, DataType, WorkerRequestMessage, WorkerResponseMessage } from "./common"
+import { HduDecodeOption, WorkerRequestMessage, WorkerResponseMessage } from "./common";
+import { Hdu } from "./hdu";
 type DecodeWorker = Worker
 const DecodeWorker = require<{ new(): DecodeWorker }>('worker-loader!./decode_worker')
-import { Hdu } from "./hdu"
 
 
 type Callback = {
@@ -10,7 +10,7 @@ type Callback = {
 }
 
 
-export class Decoder {
+class Decoder {
     private worker?: DecodeWorker
     private requestId = 0
     private callbacks = new Map<number, Callback>()
@@ -45,7 +45,15 @@ export class Decoder {
         return this.worker
     }
 
-    close() {
-        this.worker!.terminate()
-    }
+    static singleton?: Decoder
+}
+
+
+export async function decode(fileContent: ArrayBuffer, hduDecodeOptions?: Partial<HduDecodeOption>[]) {
+    const decoder = Decoder.singleton = Decoder.singleton || new Decoder()
+    const start = performance.now()
+    console.log('decode start')
+    const hdul = await decoder.decode(fileContent, hduDecodeOptions)
+    console.log(performance.now() - start)
+    return hdul
 }

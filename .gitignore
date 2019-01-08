@@ -3,3 +3,5 @@
 .DS_Store
 /build/dist
 /example/dist
+
+wabuild

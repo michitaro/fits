@@ -1,11 +1,15 @@
-import { WorkerRequestMessage, WorkerResponseMessage, HduSource, Header, DataType, card, HduDecodeOption } from "./common"
+import { card, DataType, HduDecodeOption, HduSource, Header, WorkerRequestMessage, WorkerResponseMessage } from "./common";
+
 interface gzip {
     unzip(compressed: Uint8Array): number[]
 }
+
 const gzip = require<gzip>('gzip-js')
 
+let wa: any
 
-self.addEventListener('message', e => {
+self.addEventListener('message', async e => {
+    // wa = await require<any>('./webassembly/index.clist').initialize()
     const request: WorkerRequestMessage = e.data
     const mainThread: Worker = self as any
     try {
@@ -38,7 +42,6 @@ function decode(request: WorkerRequestMessage): HduSource[] {
     for (let j = 0; j < request.hduDecodeOptions.length; ++j) {
         const o = request.hduDecodeOptions[j]
         const i = o.sourceIndex == undefined ? (o.sourceIndex = j) : o.sourceIndex
-        const h = headers[i]
         o.outputDataType == undefined && (o.outputDataType = DataType.float32)
     }
 
@@ -48,6 +51,7 @@ function decode(request: WorkerRequestMessage): HduSource[] {
         const header = headers[o.sourceIndex]
         const buffer = dataBuffers[o.sourceIndex]
         const ab = buildTypedArray(header, buffer, o)
+        // const ab = buildTypedArrayWA(header, buffer, o)
         return { header, data: ab, dataType: o.outputDataType }
     })
 }
@@ -100,6 +104,43 @@ function buildTypedArray(header: Header, dv: DataView, o: HduDecodeOption) {
 }
 
 
+// function buildTypedArrayWA(header: Header, dv: DataView, o: HduDecodeOption) {
+//     const bzero = card(header, 'BZERO', 'number', 0)
+//     const bscale = card(header, 'BSCALE', 'number', 1)
+//     const { nPixels } = calcDataSize(header)
+//     const srcBitpix = card(header, 'BITPIX', 'number')
+//     const srcBytepix = Math.abs(srcBitpix) >> 3
+//     const srcBufer = wa._malloc(srcBytepix * nPixels)
+//     const heap = wa.HEAPU8 as Uint8Array
+//     heap.set(new Uint8Array(dv.buffer, dv.byteOffset, srcBytepix * nPixels), srcBufer)
+//     switch (srcBytepix) {
+//         case 2:
+//             wa._byteswap16(srcBufer, nPixels)
+//             break
+//         case 4:
+//             wa._byteswap32(srcBufer, nPixels)
+//             break
+//         case 8:
+//             wa._byteswap64(srcBufer, nPixels)
+//             break
+//     }
+//     const dstBytepix = Math.abs(o.outputDataType) >> 3
+//     const dstBuffer = wa._malloc(dstBytepix * nPixels)
+//     wa[`_convert_array_${bitpix2ctype(srcBitpix)}_${bitpix2ctype(o.outputDataType)}`](srcBufer, dstBuffer, nPixels, bscale, bzero)
+//     const array = new ({
+//         [DataType.uint8]: Uint8Array,
+//         [DataType.uint16]: Uint16Array,
+//         [DataType.uint32]: Uint32Array,
+//         [DataType.float32]: Float32Array,
+//         [DataType.float64]: Float64Array,
+//     }[o.outputDataType])(nPixels)
+//     array.set(new Uint8Array(heap.buffer, dstBuffer, dstBytepix * nPixels))
+//     wa._free(dstBuffer)
+//     wa._free(srcBufer)
+//     return array.buffer
+// }
+
+
 const CARD_LENGTH = 80
 const CARDS_PER_BLOCK = 36
 const BLOCK_SIZE = CARD_LENGTH * CARDS_PER_BLOCK
@@ -128,24 +169,6 @@ function strideArrayBuffer(ab: ArrayBuffer) {
 }
 
 
-function bitpix2dataType(bitpix: number) {
-    switch (bitpix) {
-        case 8:
-            return DataType.uint8
-        case 16:
-            return DataType.uint16
-        case 32:
-            return DataType.uint32
-        case -32:
-            return DataType.float32
-        case -64:
-            return DataType.float64
-        default:
-            throw new Error(`unknwon BITPIX: ${bitpix}`)
-    }
-}
-
-
 function align(n: number, blockSize: number) {
     return (Math.floor((n - 1) / blockSize) + 1) * blockSize
 }
@@ -158,6 +181,24 @@ function calcDataSize(header: Header) {
     const byteDepth = Math.abs(card(header, 'BITPIX', 'number')) / 8
     const byteLength = nPixels * byteDepth
     return { nPixels, byteDepth, byteLength, naxis, naxes }
+}
+
+
+function bitpix2ctype(bitpix: number) {
+    switch (bitpix) {
+        case 8:
+            return 'uint8_t'
+        case 16:
+            return 'uint16_t'
+        case 32:
+            return 'uint32_t'
+        case -32:
+            return 'float'
+        case -64:
+            return 'double'
+        default:
+            throw new Error(`invalid bitpix: ${bitpix} `)
+    }
 }
 
 
@@ -174,7 +215,7 @@ function parseHeaderBlock(bytes: Uint8Array) {
     const text = String.fromCharCode.apply(String, bytes) as string
     const header: Header = {}
     if (text.length != BLOCK_SIZE)
-        throw new Error(`invalid byte sequence: ${text}`)
+        throw new Error(`invalid byte sequence: ${text} `)
     let end = false
     cardLoop:
     for (let i = 0; i < CARDS_PER_BLOCK; ++i) {
@@ -222,11 +263,11 @@ class Card {
             case 'END     ':
                 return new Card(CardType.END)
             case 'COMMENT ': {
-                const comment = strip(raw.substr(8))
+                const comment = raw.substr(8).trim()
                 return new Card(CardType.COMMENT, { comment })
             }
             case 'HISTORY ': {
-                const comment = strip(raw.substr(8))
+                const comment = raw.substr(8).trim()
                 return new Card(CardType.HISTORY, { comment })
             }
             default: {
@@ -236,7 +277,7 @@ class Card {
                 }
                 if (left.match(/^HIERARCH /))
                     left = left.substr(9)
-                const key = strip(left)
+                const key = left.trim()
                 const { value, comment } = this.parseValueString(right)
                 return new Card(CardType.KEY_VALUE, { key, value, comment })
             }
@@ -247,9 +288,9 @@ class Card {
         let [valueString, commentString] = raw.split('/')
         let comment: string | undefined
         if (commentString) {
-            comment = strip(commentString)
+            comment = commentString.trim()
         }
-        valueString = strip(valueString)
+        valueString = valueString.trim()
         let value: any
         if (valueString == 'T')
             value = true
@@ -272,12 +313,6 @@ function isGzipped(ab: ArrayBuffer) {
 }
 
 
-
 function gzipInflate(ab: ArrayBuffer) {
     return (new Uint8Array(gzip.unzip(new Uint8Array(ab)))).buffer
-}
-
-
-function strip(s: string) {
-    return s.match(/\s*(.*?)\s*$/)![1]
 }
